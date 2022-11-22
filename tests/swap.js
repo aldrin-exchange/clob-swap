@@ -87,13 +87,13 @@ describe("swap", () => {
     const expectedResultantAmount = 7.2;
     const bestOfferPrice = 6.041;
     const amountToSpend = expectedResultantAmount * bestOfferPrice;
-    const swapAmount = new BN((amountToSpend / (1 - TAKER_FEE)) * 10 ** 6);
+    const swapAmount = new BN(amountToSpend / (1 - TAKER_FEE) * 10 ** 6);
 
     const [tokenAChange, usdcChange] = await withBalanceChange(
       program.provider,
       [ORDERBOOK_ENV.godA, ORDERBOOK_ENV.godUsdc],
       async () => {
-        await program.rpc.swap(Side.Bid, swapAmount, new BN(1.0), {
+        await program.rpc.swap(Side.Bid, swapAmount, new BN(7.2), {
           accounts: SWAP_USDC_A_ACCOUNTS,
           instructions: [
             // First order to this market so one must create the open orders account.
@@ -120,8 +120,10 @@ describe("swap", () => {
       }
     );
 
+   // await printAsksBids(marketA, program.provider);
+   
     assert.ok(tokenAChange === expectedResultantAmount);
-    assert.ok(usdcChange === -swapAmount.toNumber() / 10 ** 6);
+    assert.ok(Math.abs(usdcChange + (swapAmount.toNumber() / 10 ** 6)) <= Math.abs(usdcChange) / 1000);
   });
 
   it("Swaps from Token A to USDC", async () => {
@@ -149,6 +151,8 @@ describe("swap", () => {
       }
     );
 
+   // await printAsksBids(marketA, program.provider);
+
     assert.ok(tokenAChange === -swapAmount);
     assert.ok(usdcChange === resultantAmount.toNumber() / 10 ** 6);
   });
@@ -157,6 +161,10 @@ describe("swap", () => {
     const marketA = ORDERBOOK_ENV.marketA;
     const marketB = ORDERBOOK_ENV.marketB;
     const swapAmount = 10;
+
+    await printAsksBids(marketA, program.provider);
+    await printAsksBids(marketB, program.provider);
+
     const [tokenAChange, tokenBChange, usdcChange] = await withBalanceChange(
       program.provider,
       [ORDERBOOK_ENV.godA, ORDERBOOK_ENV.godB, ORDERBOOK_ENV.godUsdc],
@@ -208,6 +216,13 @@ describe("swap", () => {
       }
     );
 
+    await printAsksBids(marketA, program.provider);
+    await printAsksBids(marketB, program.provider);
+
+    console.log(tokenAChange);
+    console.log(swapAmount);
+    console.log(tokenBChange);
+    console.log(usdcChange);
     assert.ok(tokenAChange === -swapAmount);
     // TODO: calculate this dynamically from the swap amount.
     assert.ok(tokenBChange === 9.8);
@@ -269,6 +284,13 @@ describe("swap", () => {
       }
     );
 
+    await printAsksBids(marketB, program.provider);
+    await printAsksBids(marketA, program.provider);
+
+    console.log(tokenAChange);
+    console.log(tokenBChange);
+    console.log(swapAmount);
+    console.log(usdcChange);
     // TODO: calculate this dynamically from the swap amount.
     assert.ok(tokenAChange === 22.6);
     assert.ok(tokenBChange === -swapAmount);
@@ -285,27 +307,41 @@ const Side = {
 // Executes a closure. Returning the change in balances from before and after
 // its execution.
 async function withBalanceChange(provider, addrs, fn) {
-  const beforeBalances = [];
+  const beforeBalances = [];  
   for (let k = 0; k < addrs.length; k += 1) {
-    beforeBalances.push(
-      (await serumCmn.getTokenAccount(provider, addrs[k])).amount
-    );
+    let amt = (await serumCmn.getTokenAccount(provider, addrs[k])).amount;
+    console.log(amt.toNumber());
+    beforeBalances.push(amt);
   }
 
-  await fn();
-
+  await fn();  
   const afterBalances = [];
   for (let k = 0; k < addrs.length; k += 1) {
-    afterBalances.push(
-      (await serumCmn.getTokenAccount(provider, addrs[k])).amount
-    );
+    let amt = (await serumCmn.getTokenAccount(provider, addrs[k])).amount;
+    //console.log(amt.toNumber());
+    afterBalances.push(amt);
   }
 
   const deltas = [];
+  console.log("deltas")
   for (let k = 0; k < addrs.length; k += 1) {
-    deltas.push(
-      (afterBalances[k].toNumber() - beforeBalances[k].toNumber()) / 10 ** 6
-    );
+    let amt = (afterBalances[k].toNumber() - beforeBalances[k].toNumber());
+    //console.log(amt/ 10 ** 6);    
+    deltas.push(amt / 10 ** 6);
   }
   return deltas;
+}
+
+async function printAsksBids(market, provider) {
+  let bids = await market.loadBids(provider.connection);
+  let asks = await market.loadAsks(provider.connection);    
+  
+  console.log("bids");
+  for (let bid of bids) {
+    console.log(bid.orderId.toString(), bid.price, bid.size, bid.side);
+  }
+  console.log("asks");
+  for (let ask of asks) {
+    console.log(ask.orderId.toString(), ask.price, ask.size, ask.side);
+  }
 }
