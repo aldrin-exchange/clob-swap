@@ -3,5 +3,5 @@ cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [[test.genesis]]
-address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
+address = "BookWizfXJLgda24JdN1drgWzqw3ta3rU1vGotFjpNTH"
 program = "./deps/serum-dex/dex/target/deploy/serum_dex.so"

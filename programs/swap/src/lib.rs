@@ -14,6 +14,12 @@ use anchor_spl::dex::serum_dex::state::MarketState;
 use anchor_spl::token;
 use std::num::NonZeroU64;
 
+// Base58 encoded BookWizfXJLgda24JdN1drgWzqw3ta3rU1vGotFjpNTH (Aldrin CLOB dex)
+static DEX_PID: Pubkey = Pubkey::new_from_array([
+    160, 146, 114, 118, 80, 234, 201, 62, 239, 129, 153, 22, 240, 165, 255, 188, 141, 203, 46, 198,
+    74, 221, 64, 216, 54, 32, 133, 3, 86, 117, 149, 96,
+]);
+
 #[program]
 pub mod swap {
     use super::*;
@@ -276,7 +282,7 @@ impl<'info> OrderbookClient<'info> {
         let limit_price = 1;
         let max_coin_qty = {
             // The loaded market must be dropped before CPI.
-            let market = MarketState::load(&self.market.market, &dex::ID)?;
+            let market = MarketState::load(&self.market.market, &DEX_PID)?;
             coin_lots(&market, base_amount)
         };
         let max_native_pc_qty = u64::MAX;
